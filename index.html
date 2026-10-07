@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DramaBox Video Downloader</title>
+<style>
+  :root { --red:#e50914; --bg:#0b0b0f; --card:#15151c; --line:#26262f; --txt:#f2f2f5; --mut:#9a9aa5; --green:#a3e635; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; min-height:100vh; }
+  .wrap { max-width:860px; margin:0 auto; padding:28px 18px 80px; }
+  header { text-align:center; margin-bottom:26px; }
+  header h1 { font-size:30px; letter-spacing:.5px; }
+  header h1 span { color:var(--red); }
+  header p { color:var(--mut); margin-top:8px; font-size:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:18px; }
+  .row { display:flex; gap:10px; }
+  input[type=text] { flex:1; background:#0e0e13; border:1px solid var(--line); color:var(--txt); border-radius:10px; padding:13px 14px; font-size:15px; outline:none; }
+  input[type=text]:focus { border-color:var(--red); }
+  button { cursor:pointer; border:none; border-radius:10px; font-weight:700; font-size:15px; padding:13px 22px; }
+  .btn-red { background:var(--red); color:#fff; }
+  .btn-red:disabled { opacity:.55; cursor:wait; }
+  .btn-ghost { background:#22222b; color:var(--txt); padding:9px 14px; font-size:13px; }
+  .btn-green { background:var(--green); color:#111; padding:9px 14px; font-size:13px; display:inline-flex; align-items:center; gap:6px; text-decoration:none; font-weight:700; }
+  .hint { color:var(--mut); font-size:13px; margin-top:10px; line-height:1.6; }
+  .err { display:none; background:#3a1013; border:1px solid #7a1f24; color:#ffb4b8; padding:12px 14px; border-radius:10px; margin-top:12px; font-size:14px; }
+  .book { display:none; align-items:center; gap:16px; }
+  .book img { width:74px; height:104px; object-fit:cover; border-radius:8px; background:#000; }
+  .book h2 { font-size:19px; margin-bottom:6px; }
+  .book .stats { color:var(--mut); font-size:13px; display:flex; gap:14px; flex-wrap:wrap; }
+  .book .stats b { color:var(--green); }
+  .toolbar { display:none; align-items:center; justify-content:space-between; margin:16px 2px 10px; flex-wrap:wrap; gap:10px; }
+  .toolbar span { color:var(--mut); font-size:13px; }
+  .ep { display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+  .ep .num { font-weight:800; color:var(--mut); width:44px; font-size:14px; }
+  .ep .meta { flex:1; }
+  .ep .meta .t { font-weight:700; font-size:15px; }
+  .ep .meta .d { color:var(--mut); font-size:12px; margin-top:2px; }
+  .ep .actions { display:flex; gap:8px; align-items:center; }
+  .locked-tag { color:var(--mut); font-size:13px; padding:9px 6px; }
+  .bm-section h3 { margin-bottom:8px; font-size:17px; }
+  .bm-section p { color:var(--mut); font-size:13px; line-height:1.7; margin-bottom:10px; }
+  .bm-link { display:inline-block; background:var(--green); color:#111; font-weight:800; padding:12px 20px; border-radius:10px; text-decoration:none; cursor:grab; margin:6px 0; }
+  ol.steps { color:var(--mut); font-size:13px; line-height:1.8; padding-left:20px; margin-top:8px; }
+  footer { text-align:center; color:var(--mut); font-size:12px; margin-top:30px; line-height:1.7; }
+  .spin { display:inline-block; width:16px; height:16px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation:sp 0.7s linear infinite; vertical-align:-3px; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  @media (max-width:560px){ .row{flex-direction:column;} header h1{font-size:24px;} .ep{flex-wrap:wrap;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>DramaBox <span>Video</span> Downloader</h1>
+    <p>Paste a DramaBox link — get numbered download links for every episode.<br>DramaBox ka link paste karein — har episode ka numbered download link milega.</p>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <input type="text" id="url" placeholder="https://sharet.dramabox.com/play?bid=…  or  dramabox.com/video/…">
+      <button class="btn-red" id="go">Get Episodes</button>
+    </div>
+    <div class="hint">Works with share links (<b>sharet.dramabox.com/play?bid=…&amp;cid=…</b>) and video page links (<b>dramabox.com/video/…</b>).<br>
+    Sirf <b>free/unlocked</b> episodes ke download links milenge — locked episodes DramaBox ke paywall ke peeche hain.</div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="card book" id="bookCard">
+    <img id="cover" alt="">
+    <div>
+      <h2 id="title"></h2>
+      <div class="stats"><span>Total: <b id="stTotal"></b></span><span>Downloadable: <b id="stFree"></b></span><span>Locked: <span id="stLocked"></span></span></div>
+    </div>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <span id="countLine"></span>
+    <button class="btn-ghost" id="copyAll">Copy all links</button>
+  </div>
+  <div id="list"></div>
+
+  <div class="card bm-section">
+    <h3>🔖 Bookmarklet — for your unlocked (subscription) episodes</h3>
+    <p>Ye tool aapke DramaBox account mein login nahi karta, is liye subscription se unlock kiye gaye episodes ke links yahan nahi aayenge. Is bookmarklet ko apne browser mein save karein, phir DramaBox mein <b>login karke</b> kisi episode ka page kholein aur bookmarklet dabayein — wo aapke saare unlocked episodes ke numbered links de dega.</p>
+    <a class="bm-link" id="bmLink" href="#">⬇ DramaBox Links</a>
+    <ol class="steps">
+      <li><b>Desktop:</b> upar wale green button ko pakar kar bookmarks bar mein drag &amp; drop karein.</li>
+      <li><b>Mobile:</b> button ko <b>copy</b> karein — neeche wala code copy karke naya bookmark banayein aur uske URL mein paste kar dein:
+        <br><button class="btn-ghost" id="copyBm" style="margin-top:8px;">Copy bookmarklet code</button></li>
+      <li>dramabox.com par login karein, episode page kholein, bookmark par tap karein.</li>
+    </ol>
+  </div>
+
+  <footer>Links are signed by DramaBox and expire — fetch fresh links when you want to download.<br>Only episodes DramaBox publishes as unlocked can be downloaded.</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let EPISODES = [];
+let BOOK = '';
+
+function showErr(msg){ const e=$('err'); e.textContent=msg; e.style.display='block'; }
+function hideErr(){ $('err').style.display='none'; }
+
+$('go').addEventListener('click', async () => {
+  const url = $('url').value.trim();
+  if(!url){ showErr('Please paste a DramaBox link first.'); return; }
+  hideErr();
+  const btn = $('go'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Loading…';
+  $('list').innerHTML = ''; $('bookCard').style.display='none'; $('toolbar').style.display='none';
+  try {
+    const r = await fetch('/api/episodes?url=' + encodeURIComponent(url));
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Something went wrong');
+    render(d);
+  } catch(e){ showErr(e.message); }
+  btn.disabled = false; btn.textContent = 'Get Episodes';
+});
+
+function fname(n, code){
+  const safe = (BOOK || 'dramabox').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'_').slice(0,40) || 'dramabox';
+  return safe + '_EP' + String(n).padStart(3,'0') + '.mp4';
+}
+
+function render(d){
+  BOOK = d.book.title;
+  EPISODES = d.episodes;
+  if(d.book.cover){ $('cover').src = d.book.cover; }
+  $('title').textContent = d.book.title;
+  $('stTotal').textContent = d.book.total;
+  $('stFree').textContent = d.free;
+  $('stLocked').textContent = d.book.total - d.free;
+  $('bookCard').style.display = 'flex';
+  $('countLine').textContent = d.free + ' downloadable / ' + d.book.total + ' total';
+  $('toolbar').style.display = 'flex';
+  const list = $('list');
+  d.episodes.forEach(ep => {
+    const div = document.createElement('div');
+    div.className = 'ep';
+    const right = ep.mp4
+      ? '<a class="btn-green" target="_blank" rel="noopener" href="' + ep.mp4 + '" download="' + fname(ep.n, ep.code) + '">⬇ Download</a>' +
+        '<button class="btn-ghost" data-copy="' + ep.mp4 + '">Copy link</button>'
+      : '<span class="locked-tag">Locked 🔒</span>';
+    div.innerHTML = '<div class="num">' + ep.code + '</div>' +
+      '<div class="meta"><div class="t">Episode ' + ep.n + '</div><div class="d">' + (ep.duration ? '⏱ ' + ep.duration : '') + '</div></div>' +
+      '<div class="actions">' + right + '</div>';
+    list.appendChild(div);
+  });
+  list.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => {
+    navigator.clipboard.writeText(b.getAttribute('data-copy'));
+    b.textContent = 'Copied ✓'; setTimeout(()=>b.textContent='Copy link', 1500);
+  }));
+}
+
+$('copyAll').addEventListener('click', () => {
+  const lines = EPISODES.filter(e=>e.mp4).map(e => '# Episode ' + e.n + '\n' + e.mp4);
+  navigator.clipboard.writeText(BOOK + ' — download links\n\n' + lines.join('\n\n'));
+  $('copyAll').textContent = 'Copied ✓ ' + lines.length + ' links';
+  setTimeout(()=>$('copyAll').textContent='Copy all links', 2000);
+});
+
+/* ---------- Bookmarklet: runs on the user's own logged-in dramabox.com page ---------- */
+function bmRunner(){
+  (function(){
+    function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    var el = document.getElementById('__NEXT_DATA__');
+    if(!el){ alert('Please open a DramaBox episode page first, then tap the bookmarklet.'); return; }
+    var d; try { d = JSON.parse(el.textContent); } catch(e){ alert('Could not read page data.'); return; }
+    var pp = ((d.props||{}).pageProps)||{};
+    var book = pp.bookInfo||{};
+    var ch = pp.chapterList||[];
+    if(!ch.length){ alert('No episodes found on this page.'); return; }
+    function fmt(ms){ if(!ms) return ''; var s=Math.round(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+    var rows = ch.map(function(c,i){
+      var n=(c.index==null?i:c.index)+1;
+      var code=c.indexStr||String(n).padStart(3,'0');
+      var ok=c.unlock&&c.mp4;
+      return {n:n,code:code,mp4:ok||null,dur:fmt(c.duration)};
+    });
+    var free = rows.filter(function(r){return r.mp4;}).length;
+    var css = 'body{font-family:Arial,sans-serif;background:#0b0b0f;color:#f2f2f5;margin:0;padding:20px}' +
+      '.w{max-width:760px;margin:0 auto}h2{margin:0 0 4px}.s{color:#9a9aa5;font-size:13px;margin-bottom:14px}' +
+      '.e{display:flex;align-items:center;gap:12px;background:#15151c;border:1px solid #26262f;border-radius:10px;padding:10px 12px;margin-bottom:8px}' +
+      '.n{color:#9a9aa5;font-weight:800;width:44px}.m{flex:1}.t{font-weight:700}.du{color:#9a9aa5;font-size:12px}' +
+      'a.dl{background:#a3e635;color:#111;font-weight:800;padding:8px 14px;border-radius:8px;text-decoration:none;font-size:13px}' +
+      '.lk{color:#9a9aa5;font-size:13px}button.cp{background:#22222b;color:#f2f2f5;border:none;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer}' +
+      '.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}';
+    var h = '<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(book.bookName||'DramaBox')+' — links</title><style>'+css+'</style></head><body><div class="w">';
+    h += '<div class="top"><div><h2>'+esc(book.bookName||'DramaBox')+'</h2><div class="s">'+free+' downloadable / '+rows.length+' total (from your logged-in session)</div></div>' +
+         '<button class="cp" id="cpa">Copy all links</button></div><div id="l">';
+    rows.forEach(function(r){
+      h += '<div class="e"><div class="n">'+esc(r.code)+'</div><div class="m"><div class="t">Episode '+r.n+'</div>'+(r.dur?'<div class="du">⏱ '+r.dur+'</div>':'')+'</div>' +
+           (r.mp4 ? '<a class="dl" target="_blank" rel="noopener" href="'+r.mp4+'">⬇ Download</a>' : '<span class="lk">Locked 🔒</span>') + '</div>';
+    });
+    h += '</div><scr'+'ipt>document.getElementById("cpa").onclick=function(){var D=window.__DBDATA__;var lines=D.rows.filter(function(r){return r.mp4;}).map(function(r){return "# Episode "+r.n+"\\n"+r.mp4;});navigator.clipboard.writeText(D.title+" — download links\\n\\n"+lines.join("\\n\\n"));this.textContent="Copied ✓";};<\/scr'+'ipt></div></body></html>';
+    var w = window.open('', '_blank');
+    if(!w){ alert('Popup blocked — please allow popups for dramabox.com and try again.'); return; }
+    w.__DBDATA__ = { title: book.bookName||'DramaBox', rows: rows };
+    w.document.write(h); w.document.close();
+  })();
+}
+(function(){
+  const src = '(' + bmRunner.toString() + ')();';
+  $('bmLink').href = 'javascript:' + encodeURIComponent(src);
+  $('copyBm').addEventListener('click', () => {
+    navigator.clipboard.writeText($('bmLink').href);
+    $('copyBm').textContent = 'Copied ✓ — paste it as a bookmark URL';
+    setTimeout(()=>$('copyBm').textContent='Copy bookmarklet code', 2500);
+  });
+})();
+</script>
+</body>
+</html>
